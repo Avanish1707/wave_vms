@@ -585,7 +585,7 @@ header h2 {
 }
 .report-filters {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(180px, 220px) minmax(180px, 220px);
+  grid-template-columns: minmax(180px, 1fr) repeat(3, minmax(180px, 220px));
   align-items: center;
   gap: 16px;
   margin-bottom: 24px;

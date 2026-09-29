@@ -37,7 +37,7 @@ const PAGE_KEY = "wave-vms-web-page";
 
 const Brand = () => (
   <div className="brand">
-    <span className="brand-mark">W</span> WAVE <em>VMS</em>
+    <span className="brand-mark">i</span> Logic
   </div>
 );
 
@@ -127,7 +127,7 @@ function Login({ onLogin }) {
           <br />
           <span>critical moment.</span>
         </h1>
-        <p className="intro">
+        <p className="intro"> 
           A focused control center for your face recognition and gate
           intelligence system.
         </p>

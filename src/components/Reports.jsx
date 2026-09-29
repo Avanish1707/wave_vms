@@ -4,6 +4,8 @@ import {
   currentDateInput,
   dateText,
   detectionDateAndHour,
+  detectionTypes,
+  normalizeDetectionType,
   REPORT_PAGE_SIZE,
   reportTimeSlots,
   typeLabel,
@@ -12,6 +14,7 @@ import { AlertModal } from "./Shared.jsx";
 
 export default function Reports({ host, reload }) {
   const [reportDate, setReportDate] = useState(currentDateInput);
+  const [detectionType, setDetectionType] = useState("all");
   const [timeSlot, setTimeSlot] = useState("all");
   const [detections, setDetections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,11 +52,13 @@ export default function Reports({ host, reload }) {
         const parts = detectionDateAndHour(detection.time);
         return (
           parts?.date === reportDate &&
+          (detectionType === "all" ||
+            normalizeDetectionType(detection.type) === detectionType) &&
           (!selectedSlot ||
             (parts.hour >= selectedSlot.start && parts.hour < selectedSlot.end))
         );
       }),
-    [detections, reportDate, selectedSlot],
+    [detections, detectionType, reportDate, selectedSlot],
   );
   const pageCount = Math.max(
     1,
@@ -64,7 +69,7 @@ export default function Reports({ host, reload }) {
     page * REPORT_PAGE_SIZE,
   );
 
-  useEffect(() => setPage(1), [reportDate, timeSlot]);
+  useEffect(() => setPage(1), [detectionType, reportDate, timeSlot]);
   useEffect(() => {
     if (page > pageCount) setPage(pageCount);
   }, [page, pageCount]);
@@ -80,6 +85,19 @@ export default function Reports({ host, reload }) {
           </div>
         </div>
         <label>
+          Detection type
+          <select
+            value={detectionType}
+            onChange={(event) => setDetectionType(event.target.value)}
+          >
+            {detectionTypes.map((item) => (
+              <option key={item} value={item}>
+                {item === "all" ? "All events" : typeLabel(item)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
           Date
           <input
             type="date"
@@ -87,6 +105,7 @@ export default function Reports({ host, reload }) {
             max={currentDateInput()}
             onChange={(event) => {
               setReportDate(event.target.value);
+              setDetectionType("all");
               setTimeSlot("all");
             }}
           />
@@ -95,7 +114,10 @@ export default function Reports({ host, reload }) {
           Time slot
           <select
             value={timeSlot}
-            onChange={(event) => setTimeSlot(event.target.value)}
+            onChange={(event) => {
+              setTimeSlot(event.target.value);
+              setDetectionType("all");
+            }}
           >
             <option value="all">All day</option>
             {reportTimeSlots.map((slot) => (
