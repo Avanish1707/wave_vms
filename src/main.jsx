@@ -43,13 +43,23 @@ const Brand = () => (
 
 function deviceToken() {
   let token = localStorage.getItem(DEVICE_TOKEN_KEY);
+
   if (!token) {
-    token = `wave-vms-web-${crypto.randomUUID()}`;
+    const uuid =
+      window.crypto && typeof window.crypto.randomUUID === "function"
+        ? window.crypto.randomUUID()
+        : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+            const r = (Math.random() * 16) | 0;
+            const v = c === "x" ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          });
+
+    token = `wave-vms-web-${uuid}`;
     localStorage.setItem(DEVICE_TOKEN_KEY, token);
   }
+
   return token;
 }
-
 function requestDesktopNotifications() {
   if ("Notification" in window && Notification.permission === "default")
     Notification.requestPermission();
