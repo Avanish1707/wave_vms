@@ -26,6 +26,12 @@ import {
   normalizeDetectionType,
   typeLabel,
 } from "./utils/detection.js";
+import {
+  initializeFirebase,
+  registerFirebasePushNotifications,
+  listenForFirebasePushNotifications,
+  isFirebaseConfigured,
+} from "./utils/firebase.js";
 
 const DEFAULT_HOST = (
   import.meta.env.VITE_API_BASE_URL || "http://103.234.71.180:5000"
@@ -60,9 +66,64 @@ function deviceToken() {
 
   return token;
 }
-function requestDesktopNotifications() {
-  if ("Notification" in window && Notification.permission === "default")
-    Notification.requestPermission();
+async function registerFirebasePush() {
+  if (!isFirebaseConfigured()) {
+    console.warn("Firebase push notifications are not configured");
+    return null;
+  }
+
+  if (Notification.permission === "denied") {
+    console.warn("Push notification permission is blocked in browser settings");
+    return null;
+  }
+
+  if (Notification.permission === "default") {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      console.warn("Push notification permission was not granted");
+      return null;
+    }
+  }
+
+  const firebaseConfig = {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+  };
+  const serviceWorkerUrl = new URL(
+    "/firebase-messaging-sw.js",
+    window.location.origin,
+  );
+  for (const [key, value] of Object.entries(firebaseConfig)) {
+    if (value) serviceWorkerUrl.searchParams.set(key, value);
+  }
+
+  try {
+    const serviceWorkerRegistration = await navigator.serviceWorker.register(
+      serviceWorkerUrl,
+      { scope: "/" },
+    );
+    const activeServiceWorkerRegistration = await navigator.serviceWorker.ready;
+    if (
+      activeServiceWorkerRegistration.scope !== serviceWorkerRegistration.scope
+    ) {
+      throw new Error("Firebase service worker is not active for this site");
+    }
+
+    initializeFirebase();
+    const token = await registerFirebasePushNotifications(
+      activeServiceWorkerRegistration,
+    );
+    return token;
+  } catch (error) {
+    console.error("Firebase push registration failed:", error);
+    return null;
+  }
 }
 
 function showDesktopNotification(alert) {
@@ -97,11 +158,16 @@ function Login({ onLogin }) {
 
   async function submit(event) {
     event.preventDefault();
-    requestDesktopNotifications();
     setError("");
     setLoading(true);
-    const fcmToken = deviceToken();
+
+    let fcmToken = deviceToken();
     try {
+      const firebaseToken = await registerFirebasePush();
+      if (firebaseToken) {
+        fcmToken = firebaseToken;
+      }
+
       const response = await fetch(`${DEFAULT_HOST}/api/admin/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -137,7 +203,7 @@ function Login({ onLogin }) {
           <br />
           <span>critical moment.</span>
         </h1>
-        <p className="intro"> 
+        <p className="intro">
           A focused control center for your face recognition and gate
           intelligence system.
         </p>
@@ -286,15 +352,16 @@ function Portal({ session, onLogout }) {
           nextDetections = response.detections || [];
         } else {
           const params = new URLSearchParams({
-            limit: String(alertPage * ALERT_PAGE_SIZE + 1),
+            limit: "0",
             include_snapshot: "false",
           });
-          if (type !== "all")
-            params.set("type", normalizeDetectionType(type));
+          if (type !== "all") params.set("type", normalizeDetectionType(type));
           if (camera !== "all") params.set("camera_id", camera);
           const response = await get(`/api/mobile?${params}`);
           nextDetections = response.data?.detections || [];
-          setDetectionTotal(response.data?.detection_summary?.total_events || 0);
+          setDetectionTotal(
+            response.data?.detection_summary?.total_events || 0,
+          );
         }
         if (active) setDetections(nextDetections);
       } catch (err) {
@@ -307,9 +374,9 @@ function Portal({ session, onLogout }) {
     return () => {
       active = false;
     };
-  }, [session.host, type, camera, alertPage, alertReload]);
+  }, [session.host, type, camera, alertReload]);
   useEffect(() => {
-    const socket = io(session.host, { transports: ["websocket", "polling"] });
+    const socket = io(session.host, { transports: ["polling"] });
     const addDetection = (alert) => {
       setDetections((current) =>
         current.some((item) => item.id === alert.id)
@@ -343,6 +410,8 @@ function Portal({ session, onLogout }) {
     () =>
       detections.filter(
         (alert) =>
+          (type !== "all" ||
+            normalizeDetectionType(alert.type) !== "known_person") &&
           (type === "all" || normalizeDetectionType(alert.type) === type) &&
           (camera === "all" || alert.camera_id === camera),
       ),
@@ -358,7 +427,7 @@ function Portal({ session, onLogout }) {
             <strong>{session.username}</strong>
             <small>Administrator</small>
           </div>
-          <i/>
+          <i />
         </div>
         <nav>
           <button
@@ -373,8 +442,7 @@ function Portal({ session, onLogout }) {
             onClick={() => setPage("alerts")}
           >
             <Bell size={17} aria-hidden="true" />
-            <span>Alerts</span>{" "}
-            {detectionTotal > 0 && <b>{detectionTotal}</b>}
+            <span>Alerts</span> {detectionTotal > 0 && <b>{detectionTotal}</b>}
           </button>
           <button
             className={`nav-item ${page === "reports" ? "active" : ""}`}
@@ -488,7 +556,7 @@ function Portal({ session, onLogout }) {
 }
 
 function SummaryCard({ icon, label, value }) {
-  return (
+  return ( 
     <div className="summary-card">
       <span className="summary-icon">{icon}</span>
       <div>
@@ -503,7 +571,7 @@ function AlertWatcher({ host }) {
   const [notification, setNotification] = useState(null);
 
   useEffect(() => {
-    const socket = io(host, { transports: ["websocket", "polling"] });
+    const socket = io(host, { transports: ["polling"] });
     const notify = (alert) => {
       if (normalizeDetectionType(alert.type) === "known_person") return;
       setNotification(alert);
@@ -513,6 +581,19 @@ function AlertWatcher({ host }) {
     socket.on("face_alert", notify);
     return () => socket.disconnect();
   }, [host]);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+
+    initializeFirebase();
+
+    const unsubscribe = listenForFirebasePushNotifications((alert) => {
+      setNotification(alert);
+      showDesktopNotification(alert);
+    });
+
+    return unsubscribe;
+  }, []);
 
   if (!notification) return null;
   return (
