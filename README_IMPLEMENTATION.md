@@ -275,18 +275,16 @@ npm.cmd list firebase
 ## 🔧 Configuration Files
 
 ### `.env.local` (Ready to Use)
-```env
-VITE_API_BASE_URL=http://103.234.71.180:5000
-VITE_FIREBASE_API_KEY=AIzaSyA-GPA32nXctLuQWtUSLCFUQLPqq3IrCnY
-VITE_FIREBASE_AUTH_DOMAIN=pythonai-cfe6b.firebaseapp.com
-VITE_FIREBASE_DATABASE_URL=https://pythonai-cfe6b-default-rtdb.firebaseio.com
-VITE_FIREBASE_PROJECT_ID=pythonai-cfe6b
-VITE_FIREBASE_STORAGE_BUCKET=pythonai-cfe6b.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=313929799917
-VITE_FIREBASE_APP_ID=1:313929799917:web:2b931bacfcb351f44614e4
-VITE_FIREBASE_MEASUREMENT_ID=G-TNQFGMERY1
-VITE_FIREBASE_VAPID_PUBLIC_KEY=BCrAkyYG3-4Hcj5htmSDD_M-YFfZ2iHWQXE-PseDtua8afjJAClegaNueRti4qpLOW5sWWlm5kgf5TL1rqqIa0Q
-```
+VITE_API_BASE_URL=your_api_server_url
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain
+VITE_FIREBASE_DATABASE_URL=your_firebase_database_url
+VITE_FIREBASE_PROJECT_ID=your_firebase_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_firebase_storage_bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+VITE_FIREBASE_APP_ID=your_firebase_app_id
+VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
+VITE_FIREBASE_VAPID_PUBLIC_KEY=your_vapid_public_key
 
 ✅ **All values configured and tested**
 
