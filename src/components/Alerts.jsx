@@ -26,6 +26,7 @@ export default function Alerts({
 }) {
   const [selected, setSelected] = useState(null);
   const [selectedKnown, setSelectedKnown] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [deleteError, setDeleteError] = useState("");
   const visibleAlerts = alerts.slice(
@@ -40,6 +41,7 @@ export default function Alerts({
       await onDelete(alert);
       setSelected(null);
       setSelectedKnown(null);
+      setPendingDelete(null);
       if (visibleAlerts.length === 1 && page > 1)
         onPage((value) => Math.max(1, value - 1));
     } catch (error) {
@@ -60,7 +62,8 @@ export default function Alerts({
         disabled={isDeleting}
         onClick={(event) => {
           event.stopPropagation();
-          deleteAlert(alert);
+          setDeleteError("");
+          setPendingDelete(alert);
         }}
         onKeyDown={(event) => event.stopPropagation()}
       >
@@ -108,7 +111,7 @@ export default function Alerts({
         </button>
       </div>
       {loading && <LoadingBanner />}
-      {deleteError && (
+      {deleteError && !pendingDelete && (
         <p className="portal-error" role="alert">
           {deleteError}
         </p>
@@ -208,6 +211,54 @@ export default function Alerts({
         detection={selectedKnown}
         onClose={() => setSelectedKnown(null)}
       />
+      {pendingDelete && (
+        <div
+          className="registration-overlay delete-confirmation-overlay"
+          role="presentation"
+          onClick={() => {
+            if (deletingId === null) setPendingDelete(null);
+          }}
+        >
+          <section
+            className="registration-dialog delete-confirmation-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-confirmation-title"
+            aria-describedby="delete-confirmation-description"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p className="eyebrow">DELETE EVENT</p>
+            <h2 id="delete-confirmation-title">Delete this event?</h2>
+            <p id="delete-confirmation-description">
+              Are you sure you want to delete this event? This action cannot be
+              undone.
+            </p>
+            {deleteError && (
+              <p className="portal-error" role="alert">
+                {deleteError}
+              </p>
+            )}
+            <div className="delete-confirmation-actions">
+              <button
+                type="button"
+                className="delete-cancel-button"
+                onClick={() => setPendingDelete(null)}
+                disabled={deletingId !== null}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                className="delete-confirm-button"
+                onClick={() => deleteAlert(pendingDelete)}
+                disabled={deletingId !== null}
+              >
+                {deletingId !== null ? "Deleting..." : "Yes, delete"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }
