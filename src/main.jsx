@@ -34,7 +34,7 @@ import {
 } from "./utils/firebase.js";
 
 const DEFAULT_HOST = (
-  import.meta.env.VITE_API_BASE_URL || "http://103.234.71.180:5000"
+  import.meta.env.VITE_API_BASE_URL || "http://103.234.71.168:5000"
 ).replace(/\/+$/, "");
 const ADMIN_USERNAME = "admin";
 const DEVICE_TOKEN_KEY = "wave-vms-web-device-token";
