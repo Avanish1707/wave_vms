@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SlidersHorizontal, X } from "lucide-react";
+import { SlidersHorizontal, Trash2, X } from "lucide-react";
 import {
   ALERT_PAGE_SIZE,
   detectionTypes,
@@ -22,13 +22,52 @@ export default function Alerts({
   onClear,
   loading,
   isCameraOnline,
+  onDelete,
 }) {
   const [selected, setSelected] = useState(null);
   const [selectedKnown, setSelectedKnown] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
   const visibleAlerts = alerts.slice(
     (page - 1) * ALERT_PAGE_SIZE,
     page * ALERT_PAGE_SIZE,
   );
+  const deleteAlert = async (alert) => {
+    const eventId = alert.event_id ?? alert.id;
+    setDeletingId(String(eventId));
+    setDeleteError("");
+    try {
+      await onDelete(alert);
+      setSelected(null);
+      setSelectedKnown(null);
+      if (visibleAlerts.length === 1 && page > 1)
+        onPage((value) => Math.max(1, value - 1));
+    } catch (error) {
+      setDeleteError(error.message || "Could not delete this alert.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+  const deleteButton = (alert) => {
+    const eventId = alert.event_id ?? alert.id;
+    const isDeleting = deletingId === String(eventId);
+    return (
+      <button
+        className="alert-delete-button"
+        type="button"
+        aria-label={`Delete ${alert.title || typeLabel(alert.type)} alert`}
+        title="Delete alert"
+        disabled={isDeleting}
+        onClick={(event) => {
+          event.stopPropagation();
+          deleteAlert(alert);
+        }}
+        onKeyDown={(event) => event.stopPropagation()}
+      >
+        <Trash2 size={17} aria-hidden="true" />
+      </button>
+    );
+  };
   const visibleKnownPeople = visibleAlerts.filter(
     (alert) => normalizeDetectionType(alert.type) === "known_person",
   );
@@ -69,6 +108,11 @@ export default function Alerts({
         </button>
       </div>
       {loading && <LoadingBanner />}
+      {deleteError && (
+        <p className="portal-error" role="alert">
+          {deleteError}
+        </p>
+      )}
       {loading ? (
         <div className="alerts-list" aria-label="Loading alerts">
           {Array.from({ length: 4 }, (_, index) => (
@@ -79,9 +123,10 @@ export default function Alerts({
         <div className="alerts-list" aria-label="Known person detections">
           {visibleKnownPeople.map((alert) => (
             <KnownPersonResult
-              key={alert.id}
+              key={alert.event_id ?? alert.id}
               alert={alert}
               onClick={() => setSelectedKnown(alert)}
+              deleteButton={deleteButton(alert)}
             />
           ))}
         </div>
@@ -90,13 +135,15 @@ export default function Alerts({
           {visibleAlerts.map((alert) => (
             <article
               className={`alert-card ${alert.type}`}
-              key={alert.id}
+              key={alert.event_id ?? alert.id}
               role="button"
               tabIndex="0"
               onClick={() => setSelected(alert)}
               onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ")
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
                   setSelected(alert);
+                }
               }}
             >
               {alert.image_url && (
@@ -123,11 +170,14 @@ export default function Alerts({
                       "Unknown camera"}
                   </span>
                   {alert.confidence && (
-                    <span>{Math.round(alert.confidence * 100)}% confidence</span>
+                    <span>
+                      {Math.round(alert.confidence * 100)}% confidence
+                    </span>
                   )}
                 </div>
               </div>
               <time className="alert-time">{dateText(alert.time)}</time>
+              {deleteButton(alert)}
             </article>
           ))}
         </div>
@@ -162,7 +212,7 @@ export default function Alerts({
   );
 }
 
-function KnownPersonResult({ alert, onClick }) {
+function KnownPersonResult({ alert, onClick, deleteButton }) {
   return (
     <article
       className="alert-card known-person-alert"
@@ -197,6 +247,7 @@ function KnownPersonResult({ alert, onClick }) {
         </div>
       </div>
       <time className="alert-time">{dateText(alert.time)}</time>
+      {deleteButton}
     </article>
   );
 }

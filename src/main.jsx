@@ -301,6 +301,27 @@ function Portal({ session, onLogout }) {
       throw new Error(data.message || `Request failed (${response.status})`);
     return data;
   };
+  const deleteAlert = async (alert) => {
+    const eventId = alert.event_id ?? alert.id;
+    if (eventId == null || eventId === "")
+      throw new Error("This alert does not include an event ID.");
+
+    const response = await fetch(
+      `${session.host}/api/events/${encodeURIComponent(eventId)}`,
+      { method: "DELETE" },
+    );
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.success === false)
+      throw new Error(data.message || `Delete failed (${response.status})`);
+
+    setDetections((current) =>
+      current.filter(
+        (item) => (item.event_id ?? item.id) !== eventId,
+      ),
+    );
+    setDetectionTotal((current) => Math.max(0, current - 1));
+    setReportReload((value) => value + 1);
+  };
   const refresh = async () => {
     setError("");
     setLoading(true);
@@ -546,6 +567,7 @@ function Portal({ session, onLogout }) {
             }}
             loading={alertsLoading}
             isCameraOnline={isCameraOnline}
+            onDelete={deleteAlert}
           />
         ) : (
           <ReportsView host={session.host} reload={reportReload} />
