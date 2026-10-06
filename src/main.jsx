@@ -65,7 +65,7 @@ function deviceToken() {
   }
 
   return token;
-}
+}                 
 async function registerFirebasePush() {
   if (!isFirebaseConfigured()) {
     console.warn("Firebase push notifications are not configured");
