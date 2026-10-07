@@ -41,8 +41,8 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification?.title || "iLogic Alert";
   const notificationOptions = {
     body: payload.notification?.body || "New security event detected",
-    icon: "/favicon.ico",
-    badge: "/favicon.ico",
+    icon: "/ilogic-logo.png",
+    badge: "/ilogic-logo.png",
     tag: "wave-vms-alert",
     requireInteraction: true,
     data: payload.data,

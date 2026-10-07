@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { io } from "socket.io-client";
 import {
-  ArrowUpRight,
   Bell,
   CalendarDays,
   Eye,
   EyeOff,
+  LockKeyhole,
   LayoutGrid,
   LogOut,
+  Mail,
   RefreshCw,
   Users,
   Video,
@@ -36,14 +37,13 @@ import {
 const DEFAULT_HOST = (
   import.meta.env.VITE_API_BASE_URL || "http://103.234.71.168:5000"
 ).replace(/\/+$/, "");
-const ADMIN_USERNAME = "admin";
 const DEVICE_TOKEN_KEY = "wave-vms-web-device-token";
 const SESSION_KEY = "wave-vms-web-session";
 const PAGE_KEY = "wave-vms-web-page";
 
 const Brand = () => (
   <div className="brand">
-    <span className="brand-mark">i</span> Logic
+    <img src="/ilogic-logo.png" alt="iLogic" />
   </div>
 );
 
@@ -65,7 +65,7 @@ function deviceToken() {
   }
 
   return token;
-}                 
+}
 async function registerFirebasePush() {
   if (!isFirebaseConfigured()) {
     console.warn("Firebase push notifications are not configured");
@@ -132,7 +132,7 @@ function showDesktopNotification(alert) {
   const notification = new Notification(alert.title || typeLabel(alert.type), {
     body: `${alert.message || alert.person_name || alert.vehicle_type || "Detection recorded"}\n${alert.camera_name || alert.gate || alert.camera_id || ""}`,
     tag: `wave-vms-alert-${alert.id || Date.now()}`,
-    icon: "/favicon.ico",
+    icon: "/ilogic-logo.png",
   });
   notification.onclick = () => {
     window.focus();
@@ -140,9 +140,9 @@ function showDesktopNotification(alert) {
   };
 }
 
-function readStoredJson(key, fallback) {
+function readStoredJson(key, fallback, storage = localStorage) {
   try {
-    const value = localStorage.getItem(key);
+    const value = storage.getItem(key);
     return value ? JSON.parse(value) : fallback;
   } catch {
     return fallback;
@@ -150,7 +150,7 @@ function readStoredJson(key, fallback) {
 }
 
 function Login({ onLogin }) {
-  const [username, setUsername] = useState(ADMIN_USERNAME);
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -176,12 +176,14 @@ function Login({ onLogin }) {
       const data = await response.json().catch(() => ({}));
       if (!response.ok || data.success === false)
         throw new Error(data.message || `Login failed (${response.status})`);
-      onLogin({
-        host: DEFAULT_HOST,
-        username: data.username || username,
-        adminId: data.admin_id,
-        fcmToken,
-      });
+      onLogin(
+        {
+          host: DEFAULT_HOST,
+          username: data.username || username,
+          adminId: data.admin_id,
+          fcmToken,
+        },
+      );
     } catch (err) {
       setError(
         err.message.includes("Failed to fetch")
@@ -199,40 +201,43 @@ function Login({ onLogin }) {
         <Brand />
         <p className="eyebrow">SECURITY INTELLIGENCE</p>
         <h1>
-          See every
+          See Every Moment.
           <br />
-          <span>critical moment.</span>
+          <span>Secure What Matters.</span>
         </h1>
         <p className="intro">
-          A focused control center for your face recognition and gate
-          intelligence system.
+          A unified video management platform for intelligent surveillance,
+          facial recognition, access control, and real-time gate monitoring.
         </p>
         <div className="signal-line">
-          <i /> SECURE ADMIN ACCESS
+          <i /> SYSTEM SECURE <span>•</span> ADMIN ACCESS
         </div>
       </section>
       <section className="login-panel">
         <form className="auth-card" onSubmit={submit}>
-          <p className="eyebrow">ADMINISTRATOR</p>
           <h2>Welcome back</h2>
-          <p className="subtle">
-            Sign in to monitor registrations and detection alerts.
-          </p>
+          <p className="subtle">Sign in to your command center.</p>
           <label>
-            Username
-            <input
-              autoComplete="username"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              required
-            />
+            Email address
+            <span className="input-with-icon">
+              <Mail size={15} aria-hidden="true" />
+              <input
+                autoComplete="username"
+                placeholder="name@company.com"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                required
+              />
+            </span>
           </label>
           <label>
             Password
             <span className="password-field">
+              <LockKeyhole size={15} aria-hidden="true" />
               <input
                 autoComplete="current-password"
                 type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
@@ -251,20 +256,17 @@ function Login({ onLogin }) {
           <button className="primary-button" disabled={loading}>
             {loading ? (
               <>
-                <span>Logging in…</span>
-                <RefreshCw
-                  className="loading-spin"
-                  size={18}
-                  aria-hidden="true"
-                />
+                <span>Signing in…</span>
+                <RefreshCw className="loading-spin" size={17} aria-hidden="true" />
               </>
             ) : (
-              <>
-                <span>Login</span>
-                <ArrowUpRight size={18} aria-hidden="true" />
-              </>
+              "Sign in"
             )}
           </button>
+          <div className="secure-access">
+            <LockKeyhole size={12} aria-hidden="true" />
+            <span>SECURE ENCRYPTED ACCESS</span>
+          </div>
         </form>
       </section>
     </main>
@@ -647,19 +649,22 @@ function AlertWatcher({ host }) {
 
 function App() {
   const [session, setSession] = useState(() =>
-    readStoredJson(SESSION_KEY, null),
+    readStoredJson(SESSION_KEY, null) ||
+    readStoredJson(SESSION_KEY, null, sessionStorage),
   );
   const login = (nextSession) => {
+    sessionStorage.removeItem(SESSION_KEY);
     localStorage.setItem(SESSION_KEY, JSON.stringify(nextSession));
     setSession(nextSession);
   };
   const logout = () => {
     localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
     setSession(null);
   };
   return (
     <>
-      <AlertWatcher host={session?.host || DEFAULT_HOST} />
+      {session && <AlertWatcher host={session.host} />}
       {session ? (
         <Portal session={session} onLogout={logout} />
       ) : (
